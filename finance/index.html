@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Money, this month</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;min-height:100%;display:flex;align-items:center;justify-content:center;background:#EEF0F8}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+</head><body><div id="root"></div>
+<script type="text/babel" data-presets="react">
+// Money, this month: a personal finance dashboard.
+// Built from one prompt to Claude: "Build me a personal finance dashboard:
+// spending by category, budgets that turn red when I overspend, glass UI."
+// Interactive in the browser; pass `demo` to drive it frame by frame (video).
+
+// #region data
+const INCOME = 5200;
+const CATS = [
+  {id: 'rent', name: 'Rent', color: '#7C8CFF', budget: 1600},
+  {id: 'food', name: 'Food', color: '#3DD68C', budget: 500},
+  {id: 'move', name: 'Transport', color: '#FFB547', budget: 200},
+  {id: 'fun', name: 'Fun', color: '#FF7AB6', budget: 300},
+  {id: 'subs', name: 'Subscriptions', color: '#4FC3F7', budget: 50},
+];
+const START = [
+  {id: 1, cat: 'rent', name: 'Rent', amount: 1600},
+  {id: 2, cat: 'food', name: 'Groceries', amount: 286.4},
+  {id: 3, cat: 'move', name: 'Metro card', amount: 64},
+  {id: 4, cat: 'fun', name: 'Concert tickets', amount: 120},
+  {id: 5, cat: 'food', name: 'Dinner out', amount: 58.6},
+  {id: 6, cat: 'subs', name: 'Spotify', amount: 11.99},
+  {id: 7, cat: 'subs', name: 'Cloud storage', amount: 9.99},
+  {id: 8, cat: 'subs', name: 'Gym app', amount: 14.99},
+  {id: 9, cat: 'subs', name: 'Magazine', amount: 7.49},
+];
+const NEW_EXPENSE = {id: 10, cat: 'subs', name: 'Netflix', amount: 15.49};
+const UNUSED = [8, 9]; // gym app + magazine, not opened in 60 days
+// #endregion
+
+// #region budget
+const spentBy = (txs) => Object.fromEntries(CATS.map((c) => [c.id, txs.filter((t) => t.cat === c.id).reduce((s, t) => s + t.amount, 0)]));
+const money = (n) => n.toLocaleString('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: n % 1 ? 2 : 0});
+const overBudget = (spent, c) => spent[c.id] - c.budget;
+// #endregion
+
+const Donut = ({spent, total, draw, dark}) => {
+  // #region donut
+  const R = 70, C = 2 * Math.PI * R;
+  let acc = 0;
+  return (
+    <svg width={180} height={180} viewBox="0 0 180 180">
+      <circle cx={90} cy={90} r={R} fill="none" stroke={dark ? 'rgba(255,255,255,0.08)' : 'rgba(10,20,40,0.06)'} strokeWidth={22} />
+      {CATS.map((c) => {
+        const part = (spent[c.id] / total) * draw;
+        const seg = <circle key={c.id} cx={90} cy={90} r={R} fill="none" stroke={c.color} strokeWidth={22}
+          strokeDasharray={`${Math.max(0, part * C - 3)} ${C}`} strokeDashoffset={-acc * C} transform="rotate(-90 90 90)" />;
+        acc += part;
+        return seg;
+      })}
+    </svg>
+  );
+  // #endregion
+};
+
+const FinanceApp = ({demo}) => {
+  const [txs, setTxs] = React.useState(START);
+  const [cancelled, setCancelled] = React.useState(false);
+  const [dark, setDark] = React.useState(false);
+  const live = !demo;
+  // video mode: every value comes from `demo` (0..1 progress per beat)
+  const D = demo || {reveal: [1, 1, 1, 1, 1], count: 1, draw: 1, fill: 1, added: txs.some((t) => t.id === 10) ? 1 : 0, cancel: cancelled ? 1 : 0, dark: dark ? 1 : 0, press: null};
+  const list = [...START, ...(D.added > 0 ? [NEW_EXPENSE] : [])].filter((t) => !(D.cancel >= 1 && UNUSED.includes(t.id)));
+  const spent = spentBy(live ? txs.filter((t) => !(cancelled && UNUSED.includes(t.id))) : list);
+  const total = Object.values(spent).reduce((a, b) => a + b, 0);
+  const saved = Math.round(((INCOME - total) / INCOME) * 100);
+  const isDark = D.dark > 0.5;
+  const ink = isDark ? '#F2F5FF' : '#0B1220', sub = isDark ? 'rgba(242,245,255,0.6)' : 'rgba(11,18,32,0.55)';
+  const glass = {background: isDark ? 'rgba(22,28,45,0.62)' : 'rgba(255,255,255,0.62)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.9)'}`, backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: 22, boxShadow: isDark ? '0 18px 40px rgba(0,0,0,0.35)' : '0 18px 40px rgba(30,40,80,0.10)'};
+  const pop = (k) => ({opacity: Math.min(1, k * 1.6), transform: `translateY(${(1 - k) * 24}px) scale(${0.96 + 0.04 * k})`});
+  const press = (id) => (D.press === id ? 'scale(0.96)' : 'none');
+  const savedNow = Math.round(saved * D.count);
+
+  // #region actions
+  const addExpense = () => setTxs((t) => (t.some((x) => x.id === 10) ? t : [...t, NEW_EXPENSE]));
+  const cancelUnused = () => setCancelled(true);
+  const savings = UNUSED.map((id) => START.find((t) => t.id === id).amount).reduce((a, b) => a + b, 0);
+  // #endregion
+
+  return (
+    <div style={{width: 960, height: 680, padding: 26, boxSizing: 'border-box', fontFamily: 'Inter, system-ui, sans-serif', color: ink, position: 'relative', overflow: 'hidden',
+      background: isDark ? 'radial-gradient(120% 80% at 10% 0%, #2B2F6B 0%, #0E1224 55%, #07090F 100%)' : 'radial-gradient(120% 80% at 10% 0%, #DCE4FF 0%, #F4F1FF 45%, #FDEFF6 100%)', transition: live ? 'background 400ms' : 'none'}}>
+      {/* header */}
+      <div style={{display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18, ...pop(D.reveal[0])}}>
+        <div style={{width: 42, height: 42, borderRadius: 13, background: 'linear-gradient(135deg,#7C8CFF,#FF7AB6)'}} />
+        <div style={{flex: 1}}><div style={{fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em'}}>Money, this month</div><div style={{fontSize: 14, color: sub}}>November · demo data</div></div>
+        <button onClick={() => live && setDark((d) => !d)} style={{...glass, borderRadius: 999, padding: '10px 16px', color: ink, fontWeight: 700, fontSize: 14, cursor: 'pointer', transform: press('dark')}}>{isDark ? '☀︎ Light' : '☾ Dark'}</button>
+      </div>
+      {/* stat cards */}
+      <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14, ...pop(D.reveal[1])}}>
+        {[['Income', money(INCOME), sub], ['Spent', money(Math.round(total * D.count * 100) / 100), ink], ['Saved', `${savedNow}%`, '#22B573']].map(([l, v, c]) => (
+          <div key={l} style={{...glass, padding: '16px 18px'}}><div style={{fontSize: 14, color: sub, fontWeight: 600}}>{l}</div><div style={{fontWeight: 800, fontSize: 32, letterSpacing: '-0.03em', color: c, fontVariantNumeric: 'tabular-nums'}}>{v}</div></div>
+        ))}
+      </div>
+      <div style={{display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 14}}>
+        {/* donut + legend */}
+        <div style={{...glass, padding: 18, display: 'flex', alignItems: 'center', gap: 16, ...pop(D.reveal[2])}}>
+          <div style={{position: 'relative'}}><Donut spent={spent} total={total} draw={D.draw} dark={isDark} /><div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}><div style={{fontSize: 12, color: sub, fontWeight: 600}}>Spent</div><div style={{fontWeight: 800, fontSize: 22, fontVariantNumeric: 'tabular-nums'}}>{money(Math.round(total))}</div></div></div>
+          <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 8}}>{CATS.map((c) => (
+            <div key={c.id} style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 15}}><span style={{width: 10, height: 10, borderRadius: 5, background: c.color}} /><span style={{flex: 1, fontWeight: 600}}>{c.name}</span><span style={{fontVariantNumeric: 'tabular-nums', color: sub}}>{money(Math.round(spent[c.id]))}</span></div>
+          ))}</div>
+        </div>
+        {/* budgets */}
+        <div style={{...glass, padding: 18, ...pop(D.reveal[3])}}>
+          <div style={{fontWeight: 800, fontSize: 18, marginBottom: 10}}>Budgets</div>
+          {CATS.map((c) => {
+            const over = overBudget(spent, c), pct = Math.min(1.15, spent[c.id] / c.budget) * D.fill, bad = over > 0 && D.fill >= 1;
+            return (
+              <div key={c.id} style={{marginBottom: 9}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600}}><span>{c.name}</span><span style={{color: bad ? '#FF4D6D' : sub, fontVariantNumeric: 'tabular-nums'}}>{bad ? `Over by ${money(Math.round(over * 100) / 100)}` : `${money(Math.round(spent[c.id]))} / ${money(c.budget)}`}</span></div>
+                <div style={{height: 9, borderRadius: 5, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(11,18,32,0.06)', marginTop: 5, overflow: 'hidden'}}><div style={{width: `${Math.min(100, pct * 100)}%`, height: '100%', borderRadius: 5, background: bad ? '#FF4D6D' : c.color, boxShadow: bad ? '0 0 12px rgba(255,77,109,0.6)' : 'none'}} /></div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {/* actions + recent */}
+      <div style={{display: 'grid', gridTemplateColumns: '1fr 1.05fr', gap: 14, marginTop: 14, ...pop(D.reveal[4])}}>
+        <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+          <button onClick={() => live && addExpense()} style={{...glass, padding: '14px 18px', textAlign: 'left', color: ink, fontWeight: 700, fontSize: 16, cursor: 'pointer', transform: press('add')}}>＋ Add expense</button>
+          <button onClick={() => live && cancelUnused()} style={{...glass, padding: '14px 18px', textAlign: 'left', color: ink, fontWeight: 700, fontSize: 16, cursor: 'pointer', transform: press('cancel'), border: D.cancel >= 1 ? '1.5px solid #22B573' : glass.border}}>
+            {D.cancel >= 1 ? `✓ Cancelled 2 unused subs · saving ${money(savings)}/mo` : `✂︎ Cancel unused subscriptions (${money(savings)}/mo)`}
+          </button>
+        </div>
+        <div style={{...glass, padding: '12px 16px'}}>
+          <div style={{fontWeight: 800, fontSize: 16, marginBottom: 6}}>Recent</div>
+          {list.slice(-3).reverse().map((t) => {
+            const fresh = t.id === 10 ? Math.min(1, D.added) : 1;
+            return <div key={t.id} style={{display: 'flex', justifyContent: 'space-between', fontSize: 15, padding: '4px 0', opacity: fresh, transform: `translateX(${(1 - fresh) * 40}px)`, color: t.id === 10 && fresh > 0 ? '#4FC3F7' : ink}}><span style={{fontWeight: 600}}>{t.name}</span><span style={{fontVariantNumeric: 'tabular-nums'}}>−{money(t.amount)}</span></div>;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<FinanceApp />);
+</script></body></html>

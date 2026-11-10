@@ -1,0 +1,10 @@
+Build a premium Apple-style landing page for Bayt, the robot mascot of my AI tools page @bayt.tech.ai.
+Make Bayt in real 3D with three.js: a rounded yellow head, a dark glass face with glowing eyes and a smile, and an antenna with a glowing tip.
+As I scroll, Bayt rotates, zooms and moves between sections. Use smooth scroll-driven animations, huge bold headlines, glass cards, and a dark cinematic look with soft studio lighting.
+One HTML file.
+
+--- follow-up (prompt 2, Nov 10) ---
+Great website. One note: no need for the Arabic name.
+
+--- follow-up (prompt 3, Nov 10) ---
+The page is English now, but the "Code. AI. What's next." section still says "explained in Arabic". Change it so it doesn't mention Arabic.
