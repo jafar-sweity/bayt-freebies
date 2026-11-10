@@ -1,0 +1,10 @@
+--- prompt 1 ---
+Make me an original 3D arcade game in one HTML file with three.js.
+Neon cyberpunk style: you're a small glowing ship racing down an endless grid, dodging falling code bugs.
+Make it feel premium and genuinely fun: smooth controls, speed that ramps up, near-miss combos, particles, screen shake, a score and a high score, and synth sound effects made in code.
+
+--- prompt 2 ---
+Add a boss fight. Every 40 seconds a giant bug boss appears with a health bar and attack patterns I have to dodge. Near misses on its attacks damage it, so beating it is skill, not luck. Make it feel epic.
+
+--- prompt 3 ---
+On my phone it's too bright and washed out, and I can barely see the bugs. Make it work great on phones: portrait layout, smooth touch controls, and clearer visuals.
